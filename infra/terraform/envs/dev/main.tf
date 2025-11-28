@@ -13,6 +13,12 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+module "iam" {
+  source      = "../../modules/iam"
+  project     = "data-pipeline"
+  environment = "dev"
+}
+
 # Later:
 # - call s3, lambda, iam, eventbridge modules
 # - pass in environment-specific variables
