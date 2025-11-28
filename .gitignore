@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pytest_cache/
+*.coverage
+htmlcov/
+.env
+.venv
+venv/
+env/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.crash
+.terraform/
+.terraform.lock.hcl
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

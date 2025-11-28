@@ -1,0 +1,16 @@
+[project]
+name = "lambda-transform"
+version = "0.1.0"
+description = "Lambda function to transform CSV files from raw to processed S3 buckets."
+requires-python = ">=3.10"
+dependencies = [
+    "boto3",
+    "pandas",
+    "python-dateutil",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
