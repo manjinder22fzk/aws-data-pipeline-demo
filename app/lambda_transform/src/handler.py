@@ -10,7 +10,54 @@ from dateutil import parser as date_parser
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
 s3 = boto3.client("s3")
+
+_config_cache = None
+
+def _load_config():
+    """
+    Load config from AWS Secrets Manager.
+    Falls back to environment variables for local/test usage.
+    """
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+
+    # If running locally or env vars exist, use them
+    raw_env = os.getenv("RAW_BUCKET_NAME")
+    processed_env = os.getenv("PROCESSED_BUCKET_NAME")
+    secret_name = os.getenv("CONFIG_SECRET_NAME")
+
+    # Local override path (for unit tests or no secret)
+    if raw_env and processed_env:
+        _config_cache = {
+            "raw_bucket": raw_env,
+            "processed_bucket": processed_env,
+            "processed_prefix": "processed/",
+        }
+        return _config_cache
+
+    if not secret_name:
+        raise RuntimeError(
+            "CONFIG_SECRET_NAME not set and RAW_BUCKET_NAME/PROCESSED_BUCKET_NAME not provided"
+        )
+
+    client = boto3.client("secretsmanager")
+    resp = client.get_secret_value(SecretId=secret_name)
+
+    secret_data = json.loads(resp.get("SecretString", "{}"))
+
+    # Final merged config
+    _config_cache = {
+        "raw_bucket": secret_data["raw_bucket"],
+        "processed_bucket": secret_data["processed_bucket"],
+        "processed_prefix": secret_data.get("processed_prefix", "processed/")
+    }
+
+    return _config_cache
+
+
 
 
 def transform_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -125,6 +172,7 @@ def _build_processed_key(raw_key: str) -> str:
 
 
 def lambda_handler(event, context):
+
     """
     Lambda entry point.
 
@@ -132,37 +180,33 @@ def lambda_handler(event, context):
     - Uses env vars to know RAW and PROCESSED bucket names
     - Calls process_object to transform and write output
     """
+    
     logger.info("Received event: %s", json.dumps(event))
 
-    raw_bucket_env = os.getenv("RAW_BUCKET_NAME")
-    processed_bucket_env = os.getenv("PROCESSED_BUCKET_NAME")
+    # -----------------------------------------
+    # NEW: load config (secret or env)
+    # -----------------------------------------
+    config = _load_config()
 
-    if not raw_bucket_env or not processed_bucket_env:
-        raise RuntimeError("RAW_BUCKET_NAME or PROCESSED_BUCKET_NAME not set")
+    raw_bucket_cfg = config["raw_bucket"]
+    processed_bucket_cfg = config["processed_bucket"]
 
+    # Event source bucket (should match raw_bucket)
     source_bucket, key = _get_bucket_and_key_from_event(event)
 
-    # In many designs, event bucket == RAW_BUCKET_NAME.
-    # If not, you could handle routing here.
-    if source_bucket != raw_bucket_env:
+    if source_bucket != raw_bucket_cfg:
         logger.warning(
-            "Event bucket (%s) != configured RAW_BUCKET_NAME (%s). Using event bucket.",
-            source_bucket,
-            raw_bucket_env,
+            "Event bucket (%s) != configured RAW bucket (%s). Using event bucket.",
+            source_bucket, raw_bucket_cfg,
         )
 
     result = process_object(
         raw_bucket=source_bucket,
-        processed_bucket=processed_bucket_env,
+        processed_bucket=processed_bucket_cfg,
         key=key,
     )
 
     return {
         "statusCode": 200,
-        "body": json.dumps(
-            {
-                "message": "File processed successfully",
-                **result,
-            }
-        ),
+        "body": json.dumps({"message": "File processed successfully", **result}),
     }

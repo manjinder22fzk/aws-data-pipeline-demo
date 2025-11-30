@@ -13,6 +13,11 @@ variable "lambda_role_arn" {
   type        = string
 }
 
+variable "lambda_role_name" {
+  description = "IAM role Name for Lambda execution"
+  type = string
+}
+
 variable "raw_bucket_name" {
   description = "Name of the raw S3 bucket"
   type        = string
@@ -32,4 +37,12 @@ variable "secret_name" {
 variable "lambda_package_path" {
   description = "Path to the built Lambda deployment package (.zip)"
   type        = string
+}
+
+variable "config_secret_name" {
+  type = string
+}
+
+variable "config_secret_arn" {
+  type = string
 }

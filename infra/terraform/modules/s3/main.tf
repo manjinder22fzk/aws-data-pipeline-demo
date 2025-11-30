@@ -87,3 +87,13 @@ resource "aws_s3_bucket_public_access_block" "processed_public_access_block" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+resource "aws_s3_bucket_notification" "raw_notifications" {
+  bucket = aws_s3_bucket.raw.id
+
+  eventbridge  = true
+
+  depends_on = [
+    aws_s3_bucket_public_access_block.raw_public_access_block
+  ]
+}

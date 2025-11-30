@@ -31,6 +31,7 @@ resource "aws_lambda_function" "transform" {
 
   environment {
     variables = {
+      CONFIG_SECRET_NAME    = var.config_secret_name
       RAW_BUCKET_NAME       = var.raw_bucket_name
       PROCESSED_BUCKET_NAME = var.processed_bucket_name
       APP_CONFIG_SECRET     = var.secret_name
@@ -47,4 +48,26 @@ resource "aws_lambda_function" "transform" {
     Project     = var.project
     Environment = var.environment
   }
+}
+
+data "aws_iam_policy_document" "lambda_secrets_access" {
+  statement {
+    actions = [
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = [
+      var.config_secret_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "lambda_secrets_policy" {
+  name   = "${local.name_prefix}-lambda-secrets"
+  policy = data.aws_iam_policy_document.lambda_secrets_access.json
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach" {
+  role       = var.lambda_role_name
+  policy_arn = aws_iam_policy.lambda_secrets_policy.arn
 }

@@ -17,3 +17,6 @@ output "processed_bucket_arn" {
   description = "ARN of the processed S3 bucket"
   value       = aws_s3_bucket.processed.arn
 }
+
+
+
