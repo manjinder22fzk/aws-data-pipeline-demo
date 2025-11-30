@@ -1,14 +1,24 @@
 import json
-
+import os
 
 def lambda_handler(event, context):
     """
-    Placeholder Lambda handler.
-    In later phases, this will:
-    - Parse the S3 event
-    - Read raw CSV from S3
-    - Apply transformations
-    - Write transformed CSV to processed bucket
+    Temporary stub.
+    Later we will:
+    - Parse S3 event (raw bucket object created)
+    - Read CSV from raw bucket
+    - Transform and write to processed bucket
     """
-    print("Received event:", json.dumps(event))
-    return {"statusCode": 200, "body": json.dumps({"message": "OK"})}
+    print("Event received:", json.dumps(event))
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {
+                "message": "Lambda is deployed and running",
+                "raw_bucket": os.getenv("RAW_BUCKET_NAME"),
+                "processed_bucket": os.getenv("PROCESSED_BUCKET_NAME"),
+                "env": os.getenv("ENVIRONMENT"),
+            }
+        ),
+    }

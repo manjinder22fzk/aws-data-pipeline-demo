@@ -9,3 +9,10 @@ variable "aws_profile" {
   type        = string
   default     = "dev"
 }
+
+variable "lambda_package_path" {
+  description = "Local path to the Lambda zip for dev"
+  type        = string
+  default     = "../../../../app/lambda_transform/dist/lambda.zip"
+}
+
