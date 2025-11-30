@@ -61,9 +61,34 @@ data "aws_iam_policy_document" "lambda_exec_policy" {
       "secretsmanager:GetSecretValue",
       "secretsmanager:DescribeSecret"
     ]
-    resources = ["*"] # later we can restrict to specific secret ARNs
+    resources = ["*"] # later we can narrow to specific secret ARNs
+  }
+
+  # Read access to raw bucket (list + get)
+  statement {
+    sid = "AllowReadRawBucket"
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      var.raw_bucket_arn,
+      "${var.raw_bucket_arn}/*"
+    ]
+  }
+
+  # Write access to processed bucket
+  statement {
+    sid = "AllowWriteProcessedBucket"
+    actions = [
+      "s3:PutObject"
+    ]
+    resources = [
+      "${var.processed_bucket_arn}/*"
+    ]
   }
 }
+
 
 resource "aws_iam_policy" "lambda_exec_policy" {
   name        = "${local.name_prefix}-lambda-exec-policy"
