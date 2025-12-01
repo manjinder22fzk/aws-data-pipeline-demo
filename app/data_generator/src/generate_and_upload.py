@@ -15,9 +15,13 @@ def generate_fake_sales_data(num_rows: int = 1000) -> pd.DataFrame:
         records.append(
             {
                 "order_id": str(uuid.uuid4()),
-                "order_date": fake.date_between(start_date="-30d", end_date="today").isoformat(),
+                "order_date": fake.date_between(
+                    start_date="-30d", end_date="today"
+                ).isoformat(),
                 "customer_id": fake.random_int(min=1, max=10000),
-                "amount": round(fake.pyfloat(min_value=1, max_value=500, right_digits=2), 2),
+                "amount": round(
+                    fake.pyfloat(min_value=1, max_value=500, right_digits=2), 2
+                ),
                 "currency": "USD",
                 "status": fake.random_element(["PAID", "PENDING", "CANCELLED"]),
             }
