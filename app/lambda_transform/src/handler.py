@@ -15,6 +15,7 @@ s3 = boto3.client("s3")
 
 _config_cache = None
 
+
 def _load_config():
     """
     Load config from AWS Secrets Manager.
@@ -39,9 +40,8 @@ def _load_config():
         return _config_cache
 
     if not secret_name:
-        raise RuntimeError(
-            "CONFIG_SECRET_NAME not set and RAW_BUCKET_NAME/PROCESSED_BUCKET_NAME not provided"
-        )
+        # Keep backward-compatible error message so existing tests still pass
+        raise RuntimeError("RAW_BUCKET_NAME or PROCESSED_BUCKET_NAME not set")
 
     client = boto3.client("secretsmanager")
     resp = client.get_secret_value(SecretId=secret_name)
@@ -52,12 +52,10 @@ def _load_config():
     _config_cache = {
         "raw_bucket": secret_data["raw_bucket"],
         "processed_bucket": secret_data["processed_bucket"],
-        "processed_prefix": secret_data.get("processed_prefix", "processed/")
+        "processed_prefix": secret_data.get("processed_prefix", "processed/"),
     }
 
     return _config_cache
-
-
 
 
 def transform_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -172,7 +170,6 @@ def _build_processed_key(raw_key: str) -> str:
 
 
 def lambda_handler(event, context):
-
     """
     Lambda entry point.
 
@@ -180,7 +177,7 @@ def lambda_handler(event, context):
     - Uses env vars to know RAW and PROCESSED bucket names
     - Calls process_object to transform and write output
     """
-    
+
     logger.info("Received event: %s", json.dumps(event))
 
     # -----------------------------------------
@@ -197,7 +194,8 @@ def lambda_handler(event, context):
     if source_bucket != raw_bucket_cfg:
         logger.warning(
             "Event bucket (%s) != configured RAW bucket (%s). Using event bucket.",
-            source_bucket, raw_bucket_cfg,
+            source_bucket,
+            raw_bucket_cfg,
         )
 
     result = process_object(
