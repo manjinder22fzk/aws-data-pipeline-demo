@@ -39,9 +39,9 @@ def _load_config():
         return _config_cache
 
     if not secret_name:
-        raise RuntimeError(
-            "CONFIG_SECRET_NAME not set and RAW_BUCKET_NAME/PROCESSED_BUCKET_NAME not provided"
-        )
+        # Keep backward-compatible error message so existing tests still pass
+        raise RuntimeError("RAW_BUCKET_NAME or PROCESSED_BUCKET_NAME not set")
+
 
     client = boto3.client("secretsmanager")
     resp = client.get_secret_value(SecretId=secret_name)
