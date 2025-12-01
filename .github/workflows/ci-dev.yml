@@ -39,6 +39,7 @@ jobs:
           pip install black pytest
 
       - name: Run unit tests
+        working-directory: app/lambda_transform
         run: pytest
 
       - name: Run black (format check)
