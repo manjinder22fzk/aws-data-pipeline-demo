@@ -14,6 +14,36 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   }
 }
 
+# Count successful Lambda runs based on structured logs
+resource "aws_cloudwatch_log_metric_filter" "lambda_success" {
+  name           = "${local.name_prefix}-lambda-success"
+  log_group_name = aws_cloudwatch_log_group.lambda_logs.name
+
+  # Match JSON logs where event == "transform_completed" AND status == "success"
+  pattern = "{ ($.event = \"transform_completed\") && ($.status = \"success\") }"
+
+  metric_transformation {
+    name      = "${local.name_prefix}-lambda-success-count"
+    namespace = "Money96/DataPipeline"
+    value     = "1"
+  }
+}
+
+# Count failed Lambda runs based on structured logs
+resource "aws_cloudwatch_log_metric_filter" "lambda_failure" {
+  name           = "${local.name_prefix}-lambda-failure"
+  log_group_name = aws_cloudwatch_log_group.lambda_logs.name
+
+  pattern = "{ $.event = \"transform_failed\" }"
+
+  metric_transformation {
+    name      = "${local.name_prefix}-lambda-failure-count"
+    namespace = "Money96/DataPipeline"
+    value     = "1"
+  }
+}
+
+
 resource "aws_lambda_function" "transform" {
   function_name = local.function_name
   role          = var.lambda_role_arn

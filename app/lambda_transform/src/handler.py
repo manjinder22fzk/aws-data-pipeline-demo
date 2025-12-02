@@ -2,6 +2,8 @@ import json
 import os
 import logging
 from io import StringIO
+import uuid
+from typing import Optional
 
 import boto3
 import pandas as pd
@@ -10,10 +12,51 @@ from dateutil import parser as date_parser
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 s3 = boto3.client("s3")
 
 _config_cache = None
+
+
+def _base_log_context(correlation_id: Optional[str] = None) -> dict:
+    """
+    Common fields we want on *every* structured log line.
+    This makes querying/alerting easier.
+    """
+    ctx = {
+        "pipeline": os.getenv("PROJECT", "money96-data-pipeline"),
+        "environment": os.getenv("ENVIRONMENT", "dev"),
+        "function": os.getenv(
+            "AWS_LAMBDA_FUNCTION_NAME", "money96-data-pipeline-lambda"
+        ),
+    }
+    if correlation_id:
+        ctx["correlation_id"] = correlation_id
+    return ctx
+
+
+def _log_info(event: str, message: str, correlation_id: Optional[str] = None, **fields):
+    payload = {
+        **_base_log_context(correlation_id),
+        "event": event,
+        "level": "INFO",
+        "message": message,
+        **fields,
+    }
+    # Single-line JSON – perfect for CloudWatch Logs Insights and metric filters
+    logger.info(json.dumps(payload))
+
+
+def _log_error(
+    event: str, message: str, correlation_id: Optional[str] = None, **fields
+):
+    payload = {
+        **_base_log_context(correlation_id),
+        "event": event,
+        "level": "ERROR",
+        "message": message,
+        **fields,
+    }
+    logger.error(json.dumps(payload))
 
 
 def _load_config():
@@ -185,37 +228,82 @@ def lambda_handler(event, context):
     Lambda entry point.
 
     - Parses the event to find S3 bucket/key
-    - Uses env vars to know RAW and PROCESSED bucket names
+    - Uses secret/env config for raw/processed buckets
     - Calls process_object to transform and write output
     """
 
+    # Raw event log (good for debugging)
     logger.info("Received event: %s", json.dumps(event))
 
-    # -----------------------------------------
-    # NEW: load config (secret or env)
-    # -----------------------------------------
-    config = _load_config()
+    # Correlation id – we try to base it on the event ID if present
+    correlation_id = None
+    if isinstance(event, dict):
+        correlation_id = event.get("id") or str(uuid.uuid4())
 
-    raw_bucket_cfg = config["raw_bucket"]
-    processed_bucket_cfg = config["processed_bucket"]
+    try:
+        # -----------------------------------------
+        # Load config (secret or env)
+        # -----------------------------------------
+        config = _load_config()
+        raw_bucket_cfg = config["raw_bucket"]
+        processed_bucket_cfg = config["processed_bucket"]
 
-    # Event source bucket (should match raw_bucket)
-    source_bucket, key = _get_bucket_and_key_from_event(event)
+        # Event source bucket (should match raw_bucket)
+        source_bucket, key = _get_bucket_and_key_from_event(event)
+        # Now that we know bucket/key, refine correlation_id
+        correlation_id = correlation_id or f"{source_bucket}/{key}"
 
-    if source_bucket != raw_bucket_cfg:
-        logger.warning(
-            "Event bucket (%s) != configured RAW bucket (%s). Using event bucket.",
-            source_bucket,
-            raw_bucket_cfg,
+        if source_bucket != raw_bucket_cfg:
+            _log_info(
+                event="bucket_mismatch",
+                message="Event bucket != configured RAW bucket. Using event bucket.",
+                correlation_id=correlation_id,
+                event_bucket=source_bucket,
+                configured_raw_bucket=raw_bucket_cfg,
+            )
+
+        result = process_object(
+            raw_bucket=source_bucket,
+            processed_bucket=processed_bucket_cfg,
+            key=key,
         )
 
-    result = process_object(
-        raw_bucket=source_bucket,
-        processed_bucket=processed_bucket_cfg,
-        key=key,
-    )
+        dropped_count = result["original_count"] - result["processed_count"]
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "File processed successfully", **result}),
-    }
+        # Structured success log – this is what we’ll build metrics on
+        _log_info(
+            event="transform_completed",
+            message="File processed successfully",
+            correlation_id=correlation_id,
+            raw_bucket=result["raw_bucket"],
+            processed_bucket=result["processed_bucket"],
+            key=result["source_key"],
+            processed_key=result["processed_key"],
+            original_count=result["original_count"],
+            processed_count=result["processed_count"],
+            dropped_count=dropped_count,
+            status="success",
+        )
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps(
+                {
+                    "message": "File processed successfully",
+                    **result,
+                    "dropped_count": dropped_count,
+                }
+            ),
+        }
+
+    except Exception as e:
+        # Log a structured error event
+        _log_error(
+            event="transform_failed",
+            message="Lambda processing failed",
+            correlation_id=correlation_id,
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
+        # Still raise so CloudWatch sees the error and retries / alarms work
+        raise
