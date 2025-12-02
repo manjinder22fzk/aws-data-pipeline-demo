@@ -30,7 +30,8 @@ def generate_fake_sales_data(num_rows: int = 1000) -> pd.DataFrame:
 
 
 def upload_to_s3(df: pd.DataFrame, bucket: str, prefix: str = "raw/") -> str:
-    s3 = boto3.client("s3")
+    session = boto3.Session(profile_name=os.getenv("AWS_PROFILE", "dev"))
+    s3 = session.client("s3")
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     key = f"{prefix}sales_{ts}.csv"
     csv_body = df.to_csv(index=False)
@@ -39,7 +40,7 @@ def upload_to_s3(df: pd.DataFrame, bucket: str, prefix: str = "raw/") -> str:
 
 
 if __name__ == "__main__":
-    bucket = os.getenv("RAW_BUCKET_NAME", "replace-me-dev-raw")
+    bucket = os.getenv("RAW_BUCKET_NAME", "money96-data-pipeline-money96-dev-raw")
     df = generate_fake_sales_data(1000)
     key = upload_to_s3(df, bucket)
     print(f"Uploaded fake data to s3://{bucket}/{key}")
