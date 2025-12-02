@@ -37,7 +37,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke" {
 }
 
 resource "aws_sqs_queue" "lambda_dlq" {
-  name = "${var.project}-${var.environment}-lambda-dlq"
+  name = "${var.project}-${var.environment}-eventbridge-dlq"
 
   # Optional: keep messages for 14 days so you can debug
   message_retention_seconds = 14 * 24 * 60 * 60
