@@ -65,6 +65,10 @@ module "eventbridge" {
   lambda_function_arn = module.lambda_transform.lambda_function_arn
 }
 
+# (Optional) re-expose DLQ for convenience
+output "lambda_dlq_url" {
+  value = module.eventbridge.lambda_dlq_url
+}
 
 module "secrets" {
   source = "../../modules/secrets"

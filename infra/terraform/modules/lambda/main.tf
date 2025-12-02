@@ -14,6 +14,21 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   }
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name = "${local.name_prefix}-lambda-dlq"
+
+  # Should be >= Lambda timeout
+  visibility_timeout_seconds = 120
+
+  # Keep failed events for 14 days
+  message_retention_seconds = 1209600
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
 # Count successful Lambda runs based on structured logs
 resource "aws_cloudwatch_log_metric_filter" "lambda_success" {
   name           = "${local.name_prefix}-lambda-success"
@@ -70,6 +85,10 @@ resource "aws_lambda_function" "transform" {
     }
   }
 
+  dead_letter_config {
+    target_arn = aws_sqs_queue.dlq.arn
+  }
+
   depends_on = [
     aws_cloudwatch_log_group.lambda_logs
   ]
@@ -100,4 +119,37 @@ resource "aws_iam_policy" "lambda_secrets_policy" {
 resource "aws_iam_role_policy_attachment" "lambda_secrets_attach" {
   role       = var.lambda_role_name
   policy_arn = aws_iam_policy.lambda_secrets_policy.arn
+}
+
+data "aws_iam_policy_document" "lambda_dlq_access" {
+  statement {
+    actions = [
+      "sqs:SendMessage",
+    ]
+
+    resources = [
+      aws_sqs_queue.dlq.arn,
+    ]
+  }
+}
+
+resource "aws_iam_policy" "lambda_dlq_policy" {
+  name   = "${local.name_prefix}-lambda-dlq-access"
+  policy = data.aws_iam_policy_document.lambda_dlq_access.json
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_dlq_attach" {
+  role       = var.lambda_role_name
+  policy_arn = aws_iam_policy.lambda_dlq_policy.arn
+}
+
+# --- NEW: Async invoke config (retries, max event age) ---
+resource "aws_lambda_function_event_invoke_config" "async" {
+  function_name = aws_lambda_function.transform.function_name
+
+  # How many times Lambda should retry on async failure
+  maximum_retry_attempts       = 2
+
+  # How long (in seconds) an event is retried before being considered failed
+  maximum_event_age_in_seconds = 3600  # 1 hour
 }

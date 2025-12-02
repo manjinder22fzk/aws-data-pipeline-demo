@@ -297,7 +297,7 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        # Log a structured error event
+        # Structured error log
         _log_error(
             event="transform_failed",
             message="Lambda processing failed",
@@ -305,5 +305,11 @@ def lambda_handler(event, context):
             error_type=type(e).__name__,
             error_message=str(e),
         )
-        # Still raise so CloudWatch sees the error and retries / alarms work
+
+        # Extra: full stack trace for debugging in CloudWatch
+        logger.exception(
+            "Lambda failed processing event with correlation_id=%s", correlation_id
+        )
+
+        # Still raise so CloudWatch sees the error and retries / DLQ / alarms work
         raise
