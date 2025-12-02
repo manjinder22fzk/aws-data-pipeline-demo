@@ -75,3 +75,15 @@ module "secrets" {
   processed_bucket_name = module.s3.processed_bucket_id
 }
 
+module "alerts" {
+  source = "../../modules/alerts"
+
+  project     = "money96-data-pipeline"
+  environment = "money96-dev"
+
+  lambda_function_name = module.lambda_transform.lambda_function_name
+
+  alarm_email = "manjindersinghfzk@gmail.com"
+}
+
+
