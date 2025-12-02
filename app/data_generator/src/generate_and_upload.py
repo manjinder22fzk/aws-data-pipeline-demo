@@ -45,4 +45,4 @@ if __name__ == "__main__":
     key = upload_to_s3(df, bucket)
     print(f"Uploaded fake data to s3://{bucket}/{key}")
 
-#ok
+# oki

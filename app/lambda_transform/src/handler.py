@@ -117,8 +117,9 @@ def _get_bucket_and_key_from_event(event: dict) -> tuple[str, str]:
         return bucket, key
 
     # If we don’t recognize the structure:
-    raise ValueError("Unsupported event format. No S3 Records or detail.bucket/object found.")
-
+    raise ValueError(
+        "Unsupported event format. No S3 Records or detail.bucket/object found."
+    )
 
 
 def process_object(raw_bucket: str, processed_bucket: str, key: str) -> dict:
