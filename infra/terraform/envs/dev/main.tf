@@ -1,5 +1,12 @@
 terraform {
   required_version = ">= 1.6.0"
+    backend "s3" {
+    bucket         = "money96-data-pipeline-tfstate"      # <== your bucket
+    key            = "dev/terraform.tfstate"              # path inside the bucket
+    region         = "us-east-1"                          # your region
+    dynamodb_table = "money96-data-pipeline-tf-locks"     # <== your table
+    encrypt        = true
+  }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
