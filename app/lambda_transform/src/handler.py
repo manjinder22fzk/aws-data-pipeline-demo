@@ -98,17 +98,28 @@ def _get_bucket_and_key_from_event(event: dict) -> tuple[str, str]:
     """
     Extract bucket name and key from the event.
 
-    For now we assume a direct S3 event (Records[0].s3.bucket.name / object.key).
-
-    Later, when we wire EventBridge, we can extend this to support that format too.
+    Supports:
+    - Classic S3 event (Records[0].s3.bucket.name / object.key)
+    - EventBridge S3 Object Created event (detail.bucket.name / detail.object.key)
     """
+    # 1) Direct S3 event notification format
     if "Records" in event and event["Records"]:
         record = event["Records"][0]
         bucket = record["s3"]["bucket"]["name"]
         key = record["s3"]["object"]["key"]
         return bucket, key
 
-    raise ValueError("Unsupported event format. No S3 Records found.")
+    # 2) EventBridge S3 Object Created format
+    detail = event.get("detail")
+    if detail and "bucket" in detail and "object" in detail:
+        bucket = detail["bucket"]["name"]
+        key = detail["object"]["key"]
+        return bucket, key
+
+    # If we don’t recognize the structure:
+    raise ValueError(
+        "Unsupported event format. No S3 Records or detail.bucket/object found."
+    )
 
 
 def process_object(raw_bucket: str, processed_bucket: str, key: str) -> dict:

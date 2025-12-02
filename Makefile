@@ -3,14 +3,20 @@ LAMBDA_DIST=$(LAMBDA_DIR)/dist
 LAMBDA_IMAGE=aws-data-pipeline-lambda-transform
 
 
-.PHONY: setup format test tf-plan-dev build-lambda
+.PHONY: setup format test tf-plan-dev build-lambda terraform-format seed-dev-data
 
 setup:
 	python -m venv .venv
 	. .venv/Scripts/activate && pip install -r app/lambda_transform/requirements.txt && pip install pytest black
 
+seed-dev-data:
+	. .venv/Scripts/activate && python app/data_generator/src/generate_and_upload.py
+
 format:
 	. .venv/Scripts/activate && black app/lambda_transform app/data_generator
+
+terraform-format:
+	cd infra/terraform/envs/dev && terraform fmt
 
 test:
 	. .venv/Scripts/activate && pytest
