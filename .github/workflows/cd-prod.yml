@@ -59,7 +59,7 @@ jobs:
 
       - name: Terraform plan (prod)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -no-color -out=tfplan
+        run: terraform plan -input=false -no-color -var-file=prod.tfvars -out=tfplan
 
       - name: Terraform apply (prod)
         working-directory: ${{ env.TF_WORKING_DIR }}

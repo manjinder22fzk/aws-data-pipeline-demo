@@ -113,4 +113,4 @@ jobs:
 
       - name: Terraform apply (dev)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -input=false -auto-approve
+        run: terraform apply -input=false -auto-approve -var-file=dev.tfvars

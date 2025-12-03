@@ -60,7 +60,7 @@ jobs:
 
       - name: Terraform plan (stage)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -no-color -out=tfplan
+        run: terraform plan -input=false -no-color -var-file=stage.tfvars -out=tfplan
 
       - name: Terraform apply (stage)
         working-directory: ${{ env.TF_WORKING_DIR }}
