@@ -37,6 +37,21 @@ build-lambda:
 	  -c "cd $${LAMBDA_TASK_ROOT:-/var/task} && zip -r /out/lambda.zip ."
 
 
+# AWS_PROFILE=dev terraform plan  -var-file=dev.tfvars
+# AWS_PROFILE=stage terraform plan -var-file=stage.tfvars
+
+
+# # dev
+# AWS_PROFILE=dev terraform init
+# AWS_PROFILE=dev terraform plan  -var-file=dev.tfvars
+# AWS_PROFILE=dev terraform apply -var-file=dev.tfvars
+
+# # stage
+# AWS_PROFILE=stage terraform plan  -var-file=stage.tfvars
+# AWS_PROFILE=stage terraform apply -var-file=stage.tfvars
+
+
+
 
 
 
