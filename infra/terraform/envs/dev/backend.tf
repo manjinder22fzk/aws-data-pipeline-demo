@@ -1,9 +1,9 @@
-# terraform {
-#   backend "s3" {
-#     bucket         = "replace-with-your-tf-state-bucket-dev"
-#     key            = "aws-data-pipeline-demo/dev/terraform.tfstate"
-#     region         = "us-east-1"
-#     dynamodb_table = "replace-with-your-tf-lock-table-dev"
-#     encrypt        = true
-#   }
-# }
+terraform {
+  backend "s3" {
+    bucket         = "money96-data-pipeline-tfstate"
+    key            = "dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "money96-data-pipeline-tf-locks"
+    encrypt        = true
+  }
+}

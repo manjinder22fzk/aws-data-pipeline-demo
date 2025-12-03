@@ -17,6 +17,61 @@ s3 = boto3.client("s3")
 _config_cache = None
 
 
+class DataContractError(Exception):
+    """Raised when incoming data does not satisfy the schema contract."""
+
+    pass
+
+
+# Simple, explicit data contract for the sales CSV
+SALES_DATA_CONTRACT = {
+    "name": "sales_orders_v1",
+    "description": "Contract for raw sales CSV ingested into the pipeline.",
+    "required_columns": [
+        "order_id",
+        "order_date",
+        "customer_id",
+        "amount",
+        "status",
+    ],
+    # Columns we *expect* to see. Extra columns will be logged but not failed.
+    "allowed_columns": [
+        "order_id",
+        "order_date",
+        "customer_id",
+        "amount",
+        "status",
+        "currency",  # optional for now
+    ],
+}
+
+
+def _validate_schema(df: pd.DataFrame, contract: dict = SALES_DATA_CONTRACT) -> None:
+    """
+    Validate the incoming DataFrame against the schema contract.
+
+    - Ensures all required columns are present.
+    - Logs (but does not fail) unexpected extra columns.
+    """
+    required = set(contract["required_columns"])
+    allowed = set(contract["allowed_columns"])
+    present = set(df.columns)
+
+    missing = required - present
+    if missing:
+        # This is a hard failure: we cannot safely process this file.
+        raise DataContractError(f"Missing required columns: {sorted(missing)}")
+
+    extra = present - allowed
+    if extra:
+        # Soft warning: producer added new columns, but our pipeline can still work.
+        logger.warning(
+            "Extra columns detected that are not in contract '%s': %s",
+            contract["name"],
+            sorted(extra),
+        )
+
+
 def _base_log_context(correlation_id: Optional[str] = None) -> dict:
     """
     Common fields we want on *every* structured log line.
@@ -109,10 +164,9 @@ def transform_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     - Drop rows with non-positive amount
     - Keep only valid statuses (PAID, PENDING)
     """
-    required_columns = {"order_id", "order_date", "customer_id", "amount", "status"}
-    missing = required_columns - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+
+    # At this point, _validate_schema has already guaranteed
+    # that required columns exist.
 
     # Parse and normalize dates
     def parse_date_safe(value):
@@ -178,6 +232,8 @@ def process_object(raw_bucket: str, processed_bucket: str, key: str) -> dict:
 
     df_raw = pd.read_csv(StringIO(body))
     original_count = len(df_raw)
+
+    _validate_schema(df_raw, SALES_DATA_CONTRACT)
 
     df_processed = transform_dataframe(df_raw)
     processed_count = len(df_processed)
@@ -295,6 +351,17 @@ def lambda_handler(event, context):
                 }
             ),
         }
+
+    except DataContractError as e:
+        _log_error(
+            event="schema_validation_failed",
+            message="Incoming file does not match data contract",
+            correlation_id=correlation_id,
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
+        # Still raise so DLQ / alerts pick it up
+        raise
 
     except Exception as e:
         # Structured error log

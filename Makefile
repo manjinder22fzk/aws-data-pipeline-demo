@@ -16,7 +16,7 @@ format:
 	. .venv/Scripts/activate && black app/lambda_transform app/data_generator
 
 terraform-format:
-	cd infra/terraform/envs/dev && terraform fmt
+	cd infra/terraform/envs/dev && terraform fmt && cd ../stage && terraform fmt && cd ../prod  && terraform fmt
 
 test:
 	. .venv/Scripts/activate && pytest
