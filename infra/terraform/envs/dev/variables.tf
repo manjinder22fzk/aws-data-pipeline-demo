@@ -27,7 +27,7 @@ variable "environment" {
   description = "Environment name (money96-dev / money96-stage / money96-prod)"
 }
 
-variable "aws_profile" {
+variable "aws_profile" { # Not actually used, cam be deleted as well since it is local only
   type        = string
   description = "AWS CLI profile name"
   default     = "dev" # override in stage/prod if needed
