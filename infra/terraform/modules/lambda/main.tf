@@ -79,7 +79,7 @@ resource "aws_lambda_function" "transform" {
       CONFIG_SECRET_NAME    = var.config_secret_name
       RAW_BUCKET_NAME       = var.raw_bucket_name
       PROCESSED_BUCKET_NAME = var.processed_bucket_name
-      APP_CONFIG_SECRET     = var.secret_name
+      APP_CONFIG_SECRET     = var.secret_name #legacy
       ENVIRONMENT           = var.environment
       PROJECT               = var.project
     }

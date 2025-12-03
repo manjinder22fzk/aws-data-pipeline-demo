@@ -22,6 +22,8 @@ resource "aws_secretsmanager_secret" "pipeline_config" {
 resource "aws_secretsmanager_secret_version" "pipeline_config_value" {
   secret_id     = aws_secretsmanager_secret.pipeline_config.id
   secret_string = jsonencode({
+    project          = var.project
+    environment      = var.environment
     raw_bucket       = var.raw_bucket_name
     processed_bucket = var.processed_bucket_name
     processed_prefix = "processed/"
